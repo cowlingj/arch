@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+DISPLAY=$(grep -oP "\-\-.*\K(:[0-9])" <(w))
+DISPLAY_N=${DISPLAY#":"}
+
+DBUS_DIR="${HOME}/.dbus/session-bus"
+DBUS_FILE=$(ls "${DBUS_DIR}" | grep ".*\-${DISPLAY_N}$" | head -1)
+DBUS_SESSION_BUS_ADDRESS=$(grep -oP "DBUS_SESSION_BUS_ADDRESS='\K(.*)(?=')" "${DBUS_DIR}/${DBUS_FILE}")
+
+XAUTHORITY="${HOME}/.Xauthority"

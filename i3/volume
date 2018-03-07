@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+USAGE='volume.sh <COMMAND> [<INCREMENT>]\nwhere <COMMAND> is one of:\nup\ndown\ntoggle\nmute\nunmute\nmin\nmax\nprint\n\nand <INCREMENT> is a number'
+
+if [ -z "$2" ]; then
+  INCREMENT=5
+elif [ "$2" -eq "$2" ] &>/dev/null; then
+  INCREMENT=$2
+else
+  echo -e $USASE >&2
+  exit 1
+fi
+
+case $1 in
+"up")
+  amixer -q sset 'Master' ${INCREMENT}%+ # increase sound volume
+  ;;
+"down")
+  amixer -q sset 'Master' ${INCREMENT}%- # decrease sound volume
+  ;;
+"toggle")
+  amixer -q sset 'Master' toggle # toggle mute sound
+  ;;
+"mute")
+  amixer -q sset 'Master' mute # mute sound
+  ;;
+"unmute")
+  amixer -q sset 'Master' unmute # unmute sound
+  ;;
+"min")
+  amixer -q sset 'Master' 0% # set sound to 0%
+  ;;
+"max")
+  amixer -q sset 'Master' 100% # set sound to 100%
+  ;;
+"print") # do nothing
+  ;;
+*)
+  echo -e $USAGE >&2
+  exit 1
+  ;;
+esac
+
+TVOL=0 # total accumulated volume
+i=0 # count on speakers
+for volume in $(awk -F'[][]' '$4=="on" {sub(/%$/,"",$2); print $2}' <(amixer sget Master)); do
+  TVOL=$(expr $TVOL + $volume)
+  ((i++))
+done
+
+if [ $i -ne 0 ]; then
+  AVOL="$(expr $TVOL / $i)%"
+else
+  AVOL="mute"
+fi
+
+unset TVOL
+unset i
+notify-send -t 500 "Volume: $AVOL"

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+
+# where this script is located
+SOURCE=$(readlink -f ${BASH_SOURCE})
+DIR=${SOURCE%/*}
+
+# this is recommended to be ${HOME}/bin/display_vars.sh
+DISPLAY_VAR_DIR="${DIR}/../misc/display_vars.sh"
+
+[ -z $DBUS_SESSION_BUS_ADDRESS ] \
+  && [ -z $DISPLAY ] && [ -z $XAUTHORITY ] && source "$DISPLAY_VAR_DIR"
+
+# thresholds in percent
+NOTIFY_THRESHOLD=20
+HIBERNATE_THRESHOLD=5
+
+lock_path='/tmp/battery-notify.lock'
+exec 200>"$lock_path"
+
+flock -x -n 200 || exit 0
+
+BAT_DIR=$(find /sys/class/power_supply/ -name 'BAT*' | head -1)
+C_NOW=$(cat "$BAT_DIR/charge_now")
+C_FULL=$(cat "$BAT_DIR/charge_full")
+
+cat "$BAT_DIR/status" | grep -q '^Discharging$'
+DISCHARGING="$?"
+
+C_PCT=$(printf '%.0f' $(expr ${C_NOW} \* 100 / ${C_FULL}))
+
+SUMMARY="Batery Low"
+MESSAGE="Battery running critically low at $C_PCT%!"
+
+if [ "$DISCHARGING" -eq "0" ] && [ "$C_PCT" -le "$HIBERNATE_THRESHOLD" ]; then
+  /usr/bin/systemctl hybrid-sleep
+elif [ "$DISCHARGING" -eq "0" ] && [ "$C_PCT" -le "$NOTIFY_THRESHOLD" ]; then
+  /usr/bin/notify-send -u critical "$SUMMARY" "$MESSAGE"
+fi
+
+rm -f $lock_path
+
